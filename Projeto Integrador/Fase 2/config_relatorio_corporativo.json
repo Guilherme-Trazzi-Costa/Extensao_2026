@@ -1,0 +1,28 @@
+{
+  "branding": {
+    "report_title": "Relatório Financeiro Corporativo",
+    "subtitle": "Painel executivo personalizável a partir da saída do Insight Calculado",
+    "company": "Insight Calculado | Módulo de Relatórios",
+    "accent_color": "#123B5D",
+    "secondary_color": "#E9F0F5",
+    "text_color": "#1E293B",
+    "muted_color": "#64748B",
+    "confidentiality": "Confidencial - uso gerencial",
+    "footer_text": "Documento automatizado para apoio à análise financeira e tomada de decisão"
+  },
+  "pdf": {
+    "include_cover": true,
+    "include_charts": true,
+    "include_lesson_breakdown": true,
+    "include_methodology": true,
+    "currency_symbol": "R$",
+    "show_confidentiality_badge": true
+  },
+  "csv": {
+    "delimiter": ";"
+  },
+  "excel": {
+    "freeze_header": true,
+    "sheet_color": "123B5D"
+  }
+}
