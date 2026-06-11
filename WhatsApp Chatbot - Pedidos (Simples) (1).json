@@ -1,0 +1,479 @@
+{
+  "name": "WhatsApp Chatbot - Pedidos (Simples)",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\nconst msg = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];\nconst contact = body?.entry?.[0]?.changes?.[0]?.value?.contacts?.[0];\n\nif (!msg) {\n  return [{\n    json: {\n      erro: 'Nenhuma mensagem encontrada',\n      body_recebido: body\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    phone: msg.from || '',\n    text: (msg.text?.body || '').trim(),\n    name: contact?.profile?.name || 'Cliente'\n  }\n}];"
+      },
+      "id": "18a33b0c-b84e-4922-a498-038a68bdcd5b",
+      "name": "Extrair mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "sessoes",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $execution.id }}"
+            }
+          ]
+        }
+      },
+      "id": "356e21a8-b46c-48fe-818a-1f486a51be61",
+      "name": "Buscar sessão",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        32,
+        176
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "d9VLkMGW5DzoBb4r",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Extrair mensagem').first().json;\nconst sessao = $input.first().json?.[0] ?? null;\nconst step = sessao?.step ?? 'inicio';\nconst text = msg.text.toLowerCase();\n\nconst catalogo = [\n  { id: 1, nome: 'X-Burguer',  preco: 22.90 },\n  { id: 2, nome: 'X-Bacon',    preco: 28.90 },\n  { id: 3, nome: 'X-Salada',   preco: 25.90 },\n  { id: 4, nome: 'Fritas P',   preco: 10.00 },\n  { id: 5, nome: 'Refrigerante', preco: 7.00 }\n];\n\nlet resposta = '';\nlet novoStep = step;\nlet dados = sessao?.dados ? JSON.parse(sessao.dados) : {};\n\nif (step === 'inicio') {\n  const lista = catalogo.map(p => `*${p.id}.* ${p.nome} — R$ ${p.preco.toFixed(2).replace('.',',')}`).join('\\n');\n  resposta = `Olá, *${msg.name}*! 👋\\n\\nEscolha um produto:\\n\\n${lista}\\n\\nDigite o *número* do produto:`;\n  novoStep = 'produto';\n  dados = {};\n\n} else if (step === 'produto') {\n  const escolha = catalogo.find(p => p.id === parseInt(text));\n  if (!escolha) {\n    resposta = '❌ Número inválido. Digite o número do produto desejado.';\n  } else {\n    dados.produto = escolha;\n    resposta = `*${escolha.nome}* selecionado!\\n\\nQuantas unidades?`;\n    novoStep = 'quantidade';\n  }\n\n} else if (step === 'quantidade') {\n  const qtd = parseInt(text);\n  if (isNaN(qtd) || qtd < 1) {\n    resposta = '❌ Quantidade inválida. Digite um número maior que 0.';\n  } else {\n    dados.quantidade = qtd;\n    const total = (dados.produto.preco * qtd).toFixed(2).replace('.',',');\n    resposta = `${qtd}x ${dados.produto.nome} = *R$ ${total}*\\n\\nForma de pagamento:\\n*1.* PIX\\n*2.* Cartão\\n*3.* Dinheiro\\n\\nDigite o número:`;\n    novoStep = 'pagamento';\n  }\n\n} else if (step === 'pagamento') {\n  const formas = { '1': 'PIX', '2': 'Cartão', '3': 'Dinheiro' };\n  const pg = formas[text];\n  if (!pg) {\n    resposta = '❌ Opção inválida. Digite 1, 2 ou 3.';\n  } else {\n    dados.pagamento = pg;\n    const total = (dados.produto.preco * dados.quantidade).toFixed(2).replace('.',',');\n    resposta = `📋 *Resumo do pedido*\\n───────────────\\n${dados.quantidade}x ${dados.produto.nome}\\nTotal: *R$ ${total}*\\nPagamento: ${pg}\\n───────────────\\nConfirma? *SIM* ou *NÃO*`;\n    novoStep = 'confirmacao';\n  }\n\n} else if (step === 'confirmacao') {\n  if (text === 'sim') {\n    const total = (dados.produto.preco * dados.quantidade).toFixed(2);\n    dados.total = total;\n    dados.confirmado = true;\n    resposta = `✅ *Pedido confirmado!*\\n\\nPreparando seu pedido... Em breve entraremos em contato. 🙏`;\n    novoStep = 'inicio';\n  } else if (text === 'não' || text === 'nao') {\n    resposta = '❌ Pedido cancelado. Para novo pedido, é só mandar *oi*!';\n    novoStep = 'inicio';\n    dados = {};\n  } else {\n    resposta = 'Digite *SIM* para confirmar ou *NÃO* para cancelar.';\n  }\n} else {\n  resposta = 'Para iniciar um pedido, envie *oi*!';\n  novoStep = 'inicio';\n}\n\nreturn [{\n  json: {\n    phone: msg.phone,\n    name: msg.name,\n    resposta,\n    novoStep,\n    dados,\n    sessaoExiste: !!sessao,\n    salvarPedido: dados.confirmado === true\n  }\n}];"
+      },
+      "id": "185694a3-c84c-4b08-b403-16a4190cc4d1",
+      "name": "Lógica do chatbot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.sessaoExiste }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "c5de8442-76ac-467d-82d2-206a6768b3d0",
+      "name": "Sessão existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "sessoes",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldValue": "={{ $json.novoStep }}"
+            },
+            {
+              "fieldValue": "={{ JSON.stringify($json.dados) }}"
+            },
+            {
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "0080ba90-a01f-4a7c-8433-1b4cda4c2a81",
+      "name": "Atualizar sessão",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        688,
+        64
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "d9VLkMGW5DzoBb4r",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "sessoes",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "fieldValue": "={{ $json.name }}"
+            },
+            {
+              "fieldValue": "={{ $json.novoStep }}"
+            },
+            {
+              "fieldValue": "={{ JSON.stringify($json.dados) }}"
+            },
+            {
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "cbcc72f1-aa81-4da8-aca8-7d6a53f9295d",
+      "name": "Criar sessão",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        688,
+        272
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "d9VLkMGW5DzoBb4r",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "778e1878-d516-47f4-aea1-c4bddff2e36e",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.salvarPedido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "f085f726-78a5-4b05-b2f1-0fc5e971b3c8",
+      "name": "Salvar pedido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "pedidos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "fieldValue": "={{ $json.name }}"
+            },
+            {
+              "fieldValue": "={{ $json.dados.produto.nome }}"
+            },
+            {
+              "fieldValue": "={{ $json.dados.quantidade }}"
+            },
+            {
+              "fieldValue": "={{ $json.dados.total }}"
+            },
+            {
+              "fieldValue": "={{ $json.dados.pagamento }}"
+            },
+            {
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "9423ea00-8445-4e88-80d5-d83df53608df",
+      "name": "Salvar pedido no Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        64
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "d9VLkMGW5DzoBb4r",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v19.0/123456789/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer teste"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{ $json.resposta }}\" }\n}",
+        "options": {}
+      },
+      "id": "3475346e-53b7-4a3e-bdd8-acfc1eb6f071",
+      "name": "Enviar resposta WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "c1ab3f94-1c62-4086-9c85-c07a1487d5e3",
+      "name": "Responder webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "f55aecf9-ac1c-4026-80e7-c950896e51dc",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        176
+      ],
+      "webhookId": "666c3fc8-0c0e-4bd6-b8c9-8afcb9389047"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extrair mensagem": {
+      "main": [
+        [
+          {
+            "node": "Buscar sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar sessão": {
+      "main": [
+        [
+          {
+            "node": "Lógica do chatbot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lógica do chatbot": {
+      "main": [
+        [
+          {
+            "node": "Sessão existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sessão existe?": {
+      "main": [
+        [
+          {
+            "node": "Atualizar sessão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar sessão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar sessão": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar sessão": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Salvar pedido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar pedido?": {
+      "main": [
+        [
+          {
+            "node": "Salvar pedido no Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar resposta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar pedido no Supabase": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar resposta WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Responder webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Extrair mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "adc2fece-ccf4-4a06-b8b2-25611a67eb57",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "463f2a6507ea6c7de175de559de3e757b530a0b95779cfeacce663c5768c3cea"
+  },
+  "id": "SWUxJDardvAoTY99",
+  "tags": []
+}
