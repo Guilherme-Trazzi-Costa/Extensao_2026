@@ -302,7 +302,7 @@ def _tela_login():
             """
             <div class="login-brand">
               <div class="icone">🥐</div>
-              <h1>Minha Padaria</h1>
+              <h1>Padaria da Francinete</h1>
               <p>Painel financeiro · acesso restrito</p>
             </div>
             """,
