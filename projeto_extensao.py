@@ -275,7 +275,7 @@ st.markdown("""
 <div class="hero">
   <div class="hero-icon">🥐</div>
   <div>
-    <h1>Minha Padaria</h1>
+    <h1>Padaria da Francinete</h1>
     <p>Painel financeiro · Atualizado em tempo real</p>
   </div>
 </div>
