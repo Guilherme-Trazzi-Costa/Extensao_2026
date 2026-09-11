@@ -463,7 +463,7 @@ def _tela_login():
             """
             <div class="login-brand">
               <div class="icone">🥐</div>
-              <h1>Minha Padaria</h1>
+              <h1>Padaria da Francinete</h1>
               <p>Painel financeiro · acesso restrito</p>
             </div>
             """,
@@ -538,11 +538,7 @@ def _tela_login():
             unsafe_allow_html=True,
         )
 
-        if _usando_demo():
-            st.caption(
-                "⚠️ Rodando com o usuário de demonstração embutido no arquivo. "
-                "Configure o `.streamlit/secrets.toml` antes de usar de verdade."
-            )
+        
 
 
 # ══════════════════════════════════════════════════════════════
@@ -637,7 +633,7 @@ if __name__ == "__main__":
           <div style="font-size:2rem;line-height:1">🥐</div>
           <div>
             <h1 style="font-family:'Playfair Display',serif;color:#FDE68A;
-                       font-size:1.5rem;margin:0;line-height:1.2">Minha Padaria</h1>
+                       font-size:1.5rem;margin:0;line-height:1.2">Padaria da Francinete</h1>
             <p style="color:#FEF3C7;margin:.15rem 0 0;font-size:.78rem">
               Painel financeiro · acesso restrito</p>
           </div>
