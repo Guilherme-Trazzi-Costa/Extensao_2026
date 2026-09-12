@@ -312,8 +312,8 @@ with tab_chat:
         with col_input:
             user_input = st.text_input(
                 "Mensagem",
-                placeholder='Ex: "vendi R$200 hoje" ou "quanto lucrei em maio?"',
-                label_visibility="collapsed",
+                #placeholder='Ex: "vendi R$200 hoje" ou "quanto lucrei em maio?"',
+                #label_visibility="collapsed",
             )
         with col_btn:
             enviado = st.form_submit_button("Enviar", use_container_width=True)
